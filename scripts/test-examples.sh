@@ -6,7 +6,7 @@ project_dir=$(cd "$(dirname $0)" && pwd)
 project_root=$(cd $project_dir/.. && pwd)
 EXAMPLES_DIR=$project_root/examples
 
-for f in $EXAMPLES_DIR/keypair
+for f in $EXAMPLES_DIR/*
 do
     if [ -d $f ]
     then
@@ -19,4 +19,5 @@ do
     fi
 done
 
+rm -rf ~/.terraform.d
 exit 0
