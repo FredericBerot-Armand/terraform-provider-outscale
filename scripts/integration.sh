@@ -13,4 +13,5 @@ pip --version || (echo "We need 'pip' intalled to run integration tests"; exit 1
 cd $BUILD_DIR
 pip install -r requirements.txt
 pytest -v ./test_provider_oapi.py
-rm -fr terraform.d || exit 0
+rm -fr ~/.terraform.d
+exit 0
