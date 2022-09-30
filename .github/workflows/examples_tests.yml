@@ -29,6 +29,6 @@ jobs:
       - name: Run Examples
         run: make test-examples
         env:
-          OUTSCALE_ACCESSKEYID: ${{ secrets.OSC_ACCESS_KEY }}
-          OUTSCALE_SECRETKEYID: ${{ secrets.OSC_SECRET_KEY }}
-          OUTSCALE_REGION: ${{ secrets.OSC_REGION }}
+          TF_VAR_access_key_id: ${{ secrets.OSC_ACCESS_KEY }}
+          TF_VAR_secret_key_id: ${{ secrets.OSC_SECRET_KEY }}
+          TF_VAR_region: ${{ secrets.OSC_REGION }}
