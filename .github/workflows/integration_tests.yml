@@ -39,7 +39,7 @@ jobs:
         with:
           node-version: '16'
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v1
         with:
           terraform_wrapper: false
       - name: Build go test

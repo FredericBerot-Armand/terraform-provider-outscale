@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  Integration_tests:
+  Examples_tests:
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v3
@@ -23,7 +23,7 @@ jobs:
         with:
           go-version: '>=1.18.0'
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v1
         with:
           terraform_wrapper: false
       - name: Run Examples
