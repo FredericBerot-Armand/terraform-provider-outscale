@@ -1,9 +1,9 @@
 GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
 PKG_NAME=outscale
 TEST?=./...
-PROVIDER_VERSION=0.5.4 #TODO get version automaticly
-PROVIDER_NAME=terraform-provider-outscale_v$(PROVIDER_VERSION)
-INSTALL_DIR=~/.terraform.d/plugins/registry.terraform.io/outscale-dev/outscale/$(PROVIDER_VERSION)/linux_amd64/
+PROVIDER_VERSION=0.5.32 #TODO get version automaticly
+PROVIDER_NAME=terraform-provider-outscale_v$(strip $(PROVIDER_VERSION))
+INSTALL_DIR=~/.terraform.d/plugins/registry.terraform.io/outscale-dev/outscale/$(strip $(PROVIDER_VERSION))/linux_amd64/
 WEBSITE_REPO=github.com/hashicorp/terraform-website
 
 .PHONY: default
