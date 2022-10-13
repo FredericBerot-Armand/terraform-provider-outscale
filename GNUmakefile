@@ -1,5 +1,5 @@
 TEST?=./...
-GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
+GOFMT_FILES?=$(shell find . -name '*.go')
 PKG_NAME=outscale
 WEBSITE_REPO=github.com/hashicorp/terraform-website
 
