@@ -27,9 +27,6 @@ fmt:
 fmtcheck:
 	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
 
-websitefmtcheck:
-	@sh -c "'$(CURDIR)/scripts/websitefmtcheck.sh'"
-
 lint:
 	@echo "==> Checking source code against linters..."
 	@GOGC=30 golangci-lint run ./$(PKG_NAME)  --deadline=30m
