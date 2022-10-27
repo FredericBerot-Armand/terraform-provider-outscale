@@ -112,6 +112,25 @@ func resourceOutscaleVPNConnection() *schema.Resource {
 					},
 				},
 			},
+			"vpn_options": {
+				Type:     schema.TypeSet,
+				Computed: true,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"pre_shared_key": {
+							Type:     schema.TypeString,
+							Computed: true,
+							Optional: true,
+						},
+						"tunnel_inside_ip_range": {
+							Type:     schema.TypeString,
+							Computed: true,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"request_id": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -135,19 +154,43 @@ func resourceOutscaleVPNConnectionCreate(d *schema.ResourceData, meta interface{
 
 	vpn, _, err := conn.VpnConnectionApi.CreateVpnConnection(context.Background()).CreateVpnConnectionRequest(req).Execute()
 	if err != nil {
-		return fmt.Errorf("Error creating Outscale VPN Conecction: %s", err)
+		return fmt.Errorf("Error creating Outscale VPN Connection: %s", err)
 	}
+	vpnConnection := vpn.GetVpnConnection()
+	vpnConnectionID := vpnConnection.GetVpnConnectionId()
+	d.SetId(vpnConnectionID)
 
-	if tags, ok := d.GetOk("tags"); ok {
-		err := assignTags(tags.(*schema.Set), *vpn.GetVpnConnection().VpnConnectionId, conn)
-		if err != nil {
+	if _, ok := d.GetOk("vpn_options"); ok {
+		if err := updateVpnOptions(d, meta); err != nil {
 			return err
 		}
 	}
-
-	d.SetId(*vpn.GetVpnConnection().VpnConnectionId)
+	if tags, ok := d.GetOk("tags"); ok {
+		err := assignTags(tags.(*schema.Set), *vpn.GetVpnConnection().VpnConnectionId, conn)
+		if err != nil {
+			return fmt.Errorf("Error creating Outscale VPN Connection: %s", err)
+		}
+	}
 
 	return resourceOutscaleVPNConnectionRead(d, meta)
+}
+
+func updateVpnOptions(d *schema.ResourceData, meta interface{}) error {
+	conn := meta.(*OutscaleClient).OSCAPI
+
+	updateReq := oscgo.UpdateVpnConnectionRequest{
+		VpnConnectionId: d.Id(),
+	}
+
+	if v, ok := d.GetOk("vpn_options"); ok {
+		updateReq.SetVpnOptions(vpnOptionFormSet(v.(*schema.Set)))
+	}
+
+	_, _, err := conn.VpnConnectionApi.UpdateVpnConnection(context.Background()).UpdateVpnConnectionRequest(updateReq).Execute()
+	if err != nil {
+		return fmt.Errorf("Error updating Outscale VPN Connection: %s", err)
+	}
+	return nil
 }
 
 func resourceOutscaleVPNConnectionRead(d *schema.ResourceData, meta interface{}) error {
@@ -202,21 +245,26 @@ func resourceOutscaleVPNConnectionRead(d *schema.ResourceData, meta interface{})
 	if err := d.Set("vgw_telemetries", flattenVgwTelemetries(vpnConnection.GetVgwTelemetries())); err != nil {
 		return err
 	}
+	if vpnConnection.HasVpnOptions() {
+		if err := d.Set("vpn_options", flattenVpnOptions(vpnConnection.GetVpnOptions())); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func resourceOutscaleVPNConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*OutscaleClient).OSCAPI
 
-	d.Partial(true)
-
 	if err := setOSCAPITags(conn, d); err != nil {
 		return err
 	}
 
-	d.SetPartial("tags")
-
-	d.Partial(false)
+	if d.HasChange("vpn_options") {
+		if err := updateVpnOptions(d, meta); err != nil {
+			return err
+		}
+	}
 
 	return resourceOutscaleVPNConnectionRead(d, meta)
 }
@@ -313,4 +361,33 @@ func flattenVgwTelemetries(vgwTelemetries []oscgo.VgwTelemetry) []map[string]int
 		}
 	}
 	return vgwTelemetriesMap
+}
+
+func flattenVpnOptions(vpnOptions oscgo.VpnOptions) []map[string]interface{} {
+	phase2Options := vpnOptions.GetPhase2Options()
+	result := make([]map[string]interface{}, 1)
+	tmp := make(map[string]interface{})
+
+	if phase2Options.HasPreSharedKey() {
+		tmp["pre_shared_key"] = phase2Options.GetPreSharedKey()
+	}
+	if vpnOptions.HasTunnelInsideIpRange() {
+		tmp["tunnel_inside_ip_range"] = vpnOptions.GetTunnelInsideIpRange()
+	}
+	result[0] = tmp
+	return result
+}
+
+func vpnOptionFormSet(m *schema.Set) oscgo.VpnOptions {
+	vpnOption := oscgo.VpnOptions{}
+	d := m.List()[0].(map[string]interface{})
+	if v, ok := d["pre_shared_key"]; ok && v != "" {
+		phase2Options := oscgo.Phase2Options{}
+		phase2Options.SetPreSharedKey(v.(string))
+		vpnOption.SetPhase2Options(phase2Options)
+	}
+	if v, ok := d["tunnel_inside_ip_range"]; ok && v != "" {
+		vpnOption.SetTunnelInsideIpRange(v.(string))
+	}
+	return vpnOption
 }

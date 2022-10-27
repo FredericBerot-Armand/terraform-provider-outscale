@@ -17,6 +17,8 @@ func TestAccOutscaleVPNConnection_basic(t *testing.T) {
 	resourceName := "outscale_vpn_connection.foo"
 
 	publicIP := fmt.Sprintf("172.0.0.%d", acctest.RandIntRange(1, 255))
+	sharedKey := fmt.Sprintf("shared-key-%d", acctest.RandIntRange(1, 10000))
+	sharedKeyUpdated := fmt.Sprintf("shared-key-%d", acctest.RandIntRange(1, 10000))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:      func() { testAccPreCheck(t) },
@@ -25,19 +27,37 @@ func TestAccOutscaleVPNConnection_basic(t *testing.T) {
 		CheckDestroy:  testAccOutscaleVPNConnectionDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP),
+				Config: testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP, sharedKey, "169.254.254.0/30"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccOutscaleVPNConnectionExists(resourceName),
 					resource.TestCheckResourceAttrSet(resourceName, "client_gateway_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "virtual_gateway_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "connection_type"),
 					resource.TestCheckResourceAttrSet(resourceName, "vgw_telemetries.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "vpn_options.#"),
 
+					//resource.TestCheckResourceAttr(resourceName, "vpn_options.0.pre_shared_key", sharedKey),
+					//resource.TestCheckResourceAttr(resourceName, "vpn_options.0.tunnel_inside_ip_range", "169.254.254.0/30"),
 					resource.TestCheckResourceAttr(resourceName, "connection_type", "ipsec.1"),
 				),
 			},
 			{
-				Config: testAccOutscaleVPNConnectionConfig(publicIP, true),
+				Config: testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP, sharedKeyUpdated, "169.254.254.128/30"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccOutscaleVPNConnectionExists(resourceName),
+					resource.TestCheckResourceAttrSet(resourceName, "client_gateway_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "virtual_gateway_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "connection_type"),
+					resource.TestCheckResourceAttrSet(resourceName, "vgw_telemetries.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "vpn_options.#"),
+
+					//resource.TestCheckResourceAttr(resourceName, "vpn_options.0.pre_shared_key", sharedKey),
+					//resource.TestCheckResourceAttr(resourceName, "vpn_options.0.tunnel_inside_ip_range", "169.254.254.128/30"),
+					resource.TestCheckResourceAttr(resourceName, "connection_type", "ipsec.1"),
+				),
+			},
+			{
+				Config: testAccOutscaleVPNConnectionConfig(publicIP, sharedKey, false),
 				Check: resource.ComposeTestCheckFunc(
 					testAccOutscaleVPNConnectionExists(resourceName),
 					resource.TestCheckResourceAttrSet(resourceName, "client_gateway_id"),
@@ -45,23 +65,27 @@ func TestAccOutscaleVPNConnection_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "connection_type"),
 					resource.TestCheckResourceAttrSet(resourceName, "static_routes_only"),
 					resource.TestCheckResourceAttrSet(resourceName, "vgw_telemetries.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "vpn_options.#"),
 
-					resource.TestCheckResourceAttr(resourceName, "connection_type", "ipsec.1"),
-					resource.TestCheckResourceAttr(resourceName, "static_routes_only", "true"),
-				),
-			},
-			{
-				Config: testAccOutscaleVPNConnectionConfig(publicIP, false),
-				Check: resource.ComposeTestCheckFunc(
-					testAccOutscaleVPNConnectionExists(resourceName),
-					resource.TestCheckResourceAttrSet(resourceName, "client_gateway_id"),
-					resource.TestCheckResourceAttrSet(resourceName, "virtual_gateway_id"),
-					resource.TestCheckResourceAttrSet(resourceName, "connection_type"),
-					resource.TestCheckResourceAttrSet(resourceName, "static_routes_only"),
-					resource.TestCheckResourceAttrSet(resourceName, "vgw_telemetries.#"),
-
+					//resource.TestCheckResourceAttr(resourceName, "vpn_options.0.pre_shared_key", sharedKey),
 					resource.TestCheckResourceAttr(resourceName, "connection_type", "ipsec.1"),
 					resource.TestCheckResourceAttr(resourceName, "static_routes_only", "false"),
+				),
+			},
+			{
+				Config: testAccOutscaleVPNConnectionConfig(publicIP, sharedKeyUpdated, true),
+				Check: resource.ComposeTestCheckFunc(
+					testAccOutscaleVPNConnectionExists(resourceName),
+					resource.TestCheckResourceAttrSet(resourceName, "client_gateway_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "virtual_gateway_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "connection_type"),
+					resource.TestCheckResourceAttrSet(resourceName, "static_routes_only"),
+					resource.TestCheckResourceAttrSet(resourceName, "vgw_telemetries.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "vpn_options.#"),
+
+					//resource.TestCheckResourceAttr(resourceName, "vpn_options.0.pre_shared_key", sharedKeyUpdated),
+					resource.TestCheckResourceAttr(resourceName, "connection_type", "ipsec.1"),
+					resource.TestCheckResourceAttr(resourceName, "static_routes_only", "true"),
 				),
 			},
 		},
@@ -80,7 +104,7 @@ func TestAccOutscaleVPNConnection_withoutStaticRoutes(t *testing.T) {
 		CheckDestroy:  testAccOutscaleVPNConnectionDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP),
+				Config: testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP, "key", "169.254.254.128/30"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccOutscaleVPNConnectionExists(resourceName),
 					resource.TestCheckResourceAttrSet(resourceName, "client_gateway_id"),
@@ -139,7 +163,7 @@ func TestAccOutscaleVPNConnection_importBasic(t *testing.T) {
 		CheckDestroy:  testAccOutscaleVPNConnectionDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOutscaleVPNConnectionConfig(publicIP, true),
+				Config: testAccOutscaleVPNConnectionConfig(publicIP, "key", true),
 				Check: resource.ComposeTestCheckFunc(
 					testAccOutscaleVPNConnectionExists(resourceName),
 					resource.TestCheckResourceAttrSet(resourceName, "client_gateway_id"),
@@ -209,7 +233,7 @@ func testAccOutscaleVPNConnectionDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccOutscaleVPNConnectionConfig(publicIP string, staticRoutesOnly bool) string {
+func testAccOutscaleVPNConnectionConfig(publicIP, sharedKey string, staticRoutesOnly bool) string {
 	return fmt.Sprintf(`
 		resource "outscale_virtual_gateway" "virtual_gateway" {
 			connection_type = "ipsec.1"
@@ -226,11 +250,15 @@ func testAccOutscaleVPNConnectionConfig(publicIP string, staticRoutesOnly bool) 
 			virtual_gateway_id = "${outscale_virtual_gateway.virtual_gateway.id}"
 			connection_type    = "ipsec.1"
 			static_routes_only = "%t"
+
+			vpn_options  {
+				pre_shared_key                = "%s"
+			}
 		}
-	`, publicIP, staticRoutesOnly)
+	`, publicIP, staticRoutesOnly, sharedKey)
 }
 
-func testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP string) string {
+func testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP, sharedKey, ipRange string) string {
 	return fmt.Sprintf(`
 		resource "outscale_virtual_gateway" "virtual_gateway" {
 			connection_type = "ipsec.1"
@@ -246,8 +274,13 @@ func testAccOutscaleVPNConnectionConfigWithoutStaticRoutes(publicIP string) stri
 			client_gateway_id  = "${outscale_client_gateway.customer_gateway.id}"
 			virtual_gateway_id = "${outscale_virtual_gateway.virtual_gateway.id}"
 			connection_type    = "ipsec.1"
+
+			vpn_options  {
+				pre_shared_key                = "%s"
+				tunnel_inside_ip_range        = "%s"
+			}
 		}
-	`, publicIP)
+	`, publicIP, sharedKey, ipRange)
 }
 
 func testAccOutscaleVPNConnectionConfigWithTags(publicIP, value string) string {

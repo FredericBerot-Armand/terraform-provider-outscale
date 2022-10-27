@@ -96,6 +96,22 @@ func dataSourceOutscaleVPNConnection() *schema.Resource {
 					},
 				},
 			},
+			"vpn_options": {
+				Type:     schema.TypeSet,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"pre_shared_key": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"tunnel_inside_ip_range": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"request_id": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -179,6 +195,10 @@ func dataSourceOutscaleVPNConnectionRead(d *schema.ResourceData, meta interface{
 	if err := d.Set("vgw_telemetries", flattenVgwTelemetries(vpnConnection.GetVgwTelemetries())); err != nil {
 		return err
 	}
+	if err := d.Set("vpn_options", flattenVpnOptions(vpnConnection.GetVpnOptions())); err != nil {
+		return err
+	}
+
 	d.SetId(vpnConnection.GetVpnConnectionId())
 
 	return nil
