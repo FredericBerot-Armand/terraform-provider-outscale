@@ -3,7 +3,6 @@ package outscale
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -90,9 +89,9 @@ func resourceOutscaleOAPIVirtualGatewayCreate(d *schema.ResourceData, meta inter
 	}
 
 	stateConf := &resource.StateChangeConf{
-		Pending:    []string{"pending", "ending/wait"},
+		Pending:    []string{"pending"},
 		Target:     []string{"available"},
-		Refresh:    virtualGatewayStateRefreshFunc(conn, resp.VirtualGateway.GetVirtualGatewayId(), "terminated"),
+		Refresh:    virtualGatewayStateRefreshFunc(conn, resp.VirtualGateway.GetVirtualGatewayId()),
 		Timeout:    d.Timeout(schema.TimeoutCreate),
 		Delay:      10 * time.Second,
 		MinTimeout: 3 * time.Second,
@@ -111,7 +110,6 @@ func resourceOutscaleOAPIVirtualGatewayCreate(d *schema.ResourceData, meta inter
 		if err := setOSCAPITags(conn, d); err != nil {
 			return err
 		}
-		d.SetPartial("tag")
 	}
 
 	return resourceOutscaleOAPIVirtualGatewayRead(d, meta)
@@ -178,12 +176,9 @@ func resourceOutscaleOAPIVirtualGatewayRead(d *schema.ResourceData, meta interfa
 
 func resourceOutscaleOAPIVirtualGatewayUpdate(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*OutscaleClient).OSCAPI
-	d.Partial(true)
 	if err := setOSCAPITags(conn, d); err != nil {
 		return err
 	}
-	d.SetPartial("tags")
-	d.Partial(false)
 
 	return nil
 }
@@ -253,38 +248,29 @@ func oapiVpnGatewayGetLink(vgw oscgo.VirtualGateway) *oscgo.NetToVirtualGatewayL
 	return &oscgo.NetToVirtualGatewayLink{State: aws.String("detached")}
 }
 
-func virtualGatewayStateRefreshFunc(conn *oscgo.APIClient, instanceID, failState string) resource.StateRefreshFunc {
+func virtualGatewayStateRefreshFunc(conn *oscgo.APIClient, instanceID string) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 
-		var resp oscgo.ReadVirtualGatewaysResponse
-		err := resource.Retry(5*time.Minute, func() *resource.RetryError {
-			var err error
-			resp, _, err = conn.VirtualGatewayApi.ReadVirtualGateways(context.Background()).ReadVirtualGatewaysRequest(oscgo.ReadVirtualGatewaysRequest{
-				Filters: &oscgo.FiltersVirtualGateway{
-					VirtualGatewayIds: &[]string{instanceID}}}).Execute()
-			if err != nil {
-				return utils.CheckThrottling(err)
-			}
-			return nil
-		})
-
-		if err != nil {
-			log.Printf("[ERROR] error on InstanceStateRefresh: %s", err)
-			return nil, "", err
+		filter := oscgo.ReadVirtualGatewaysRequest{
+			Filters: &oscgo.FiltersVirtualGateway{
+				VirtualGatewayIds: &[]string{instanceID},
+			},
 		}
 
-		if !resp.HasVirtualGateways() {
-			return nil, "", nil
+		resp, _, err := conn.VirtualGatewayApi.ReadVirtualGateways(context.Background()).ReadVirtualGatewaysRequest(filter).Execute()
+		if err != nil || len(resp.GetVirtualGateways()) == 0 {
+			switch {
+			case strings.Contains(fmt.Sprint(err), utils.Throttled):
+				return nil, "pending", nil
+			case strings.Contains(fmt.Sprint(err), "404") || len(resp.GetVirtualGateways()) == 0:
+				return nil, "deleted", nil
+			default:
+				return nil, "failed", fmt.Errorf("Error on virtualGatewayRefresh: %s", err)
+			}
 		}
 
 		virtualGateway := resp.GetVirtualGateways()[0]
-		state := virtualGateway.GetState()
 
-		if state == failState {
-			return virtualGateway, state, fmt.Errorf("Failed to reach target state. Reason: %v", *virtualGateway.State)
-
-		}
-
-		return virtualGateway, state, nil
+		return resp, virtualGateway.GetState(), nil
 	}
 }
