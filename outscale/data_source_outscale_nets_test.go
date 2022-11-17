@@ -13,7 +13,7 @@ func TestAccDataSourceOutscaleOAPIVpcs_basic(t *testing.T) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 	rInt := rand.Intn(16)
-	ipRange := fmt.Sprintf("172.%d.0.0/16", rInt)
+	ipRange := fmt.Sprintf("10.%d.0.0/16", rInt)
 	tag := fmt.Sprintf("terraform-testacc-vpc-data-source-%d", rInt)
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
@@ -41,11 +41,11 @@ func testAccDataSourceOutscaleOAPIVpcsConfig(ipRange, tag string) string {
 		}
 
 		data "outscale_nets" "by_id" {
-                  filter {
-                   name = "net_ids"
-                   values = [outscale_net.test.id]
-                 }
-             }
+        	filter {
+            	name = "net_ids"
+                values = [outscale_net.test.id]
+            }
+        }
 	`, ipRange, tag)
 
 }
