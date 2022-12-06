@@ -15,24 +15,20 @@ func TestAccOutscaleOAPIImageExportTasksDataSource_basic(t *testing.T) {
 	region := os.Getenv("OUTSCALE_REGION")
 	imageName := acctest.RandomWithPrefix("test-image-name")
 
-	if os.Getenv("TEST_QUOTA") == "true" {
-		resource.Test(t, resource.TestCase{
-			PreCheck: func() {
-				testAccPreCheck(t)
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccOutscaleOAPIImageExportTasksDataSourceConfig(omi, "tinav4.c2r2p2", region, imageName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckOutscaleImageExportTaskDataSourceID("outscale_image_export_task.outscale_image_export_task"),
+				),
 			},
-			Providers: testAccProviders,
-			Steps: []resource.TestStep{
-				{
-					Config: testAccOutscaleOAPIImageExportTasksDataSourceConfig(omi, "tinav4.c2r2p2", region, imageName),
-					Check: resource.ComposeTestCheckFunc(
-						testAccCheckOutscaleImageExportTaskDataSourceID("outscale_image_export_task.outscale_image_export_task"),
-					),
-				},
-			},
-		})
-	} else {
-		t.Skip("will be done soon")
-	}
+		},
+	})
 }
 
 func testAccOutscaleOAPIImageExportTasksDataSourceConfig(omi, vmType, region, imageName string) string {

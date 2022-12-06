@@ -52,6 +52,7 @@ func resourceOutscaleOAPIIMageExportTask() *schema.Resource {
 						"osu_prefix": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Computed: true,
 							ForceNew: true,
 						},
 						"osu_api_key": {
